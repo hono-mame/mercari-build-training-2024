@@ -1,6 +1,7 @@
 package main
 
 import (
+	"mime/multipart"
 	"crypto/sha256"
 	"encoding/hex"
 	"path/filepath"
@@ -70,39 +71,48 @@ func writeItemsToFile(items *Items) error {
     return nil
 }
 
+func hashAndSaveImage(image *multipart.FileHeader, imgDir string) (string, error){
+	// open the image file
+	src, err := image.Open()
+	if(err != nil){
+		return "", err
+	}
+	defer src.Close()
+	// create a hash of the image file
+	hash := sha256.New()
+	if _, err := io.Copy(hash, src); err != nil {
+		return "", err
+	}
+	imageHash := hex.EncodeToString(hash.Sum(nil))
+	// Reset the file position to the beginning
+    if _, err := src.Seek(0, io.SeekStart); err != nil {
+        return "", err
+    }
+	// create the image file in the directory
+	imageName := filepath.Join(ImgDir, imageHash+".jpg")
+	dst, err := os.Create(imageName)
+	if err != nil {
+		return "", err
+	}
+	defer dst.Close()
+	// Copy the image contents to the destination file
+    if _, err := io.Copy(dst, src); err != nil {
+        return "", err
+    }
+    return imageName, nil
+}
+
 
 func addItem(c echo.Context) error {
 	// Get form data
 	name := c.FormValue("name")
 	category := c.FormValue("category")
 	image, err := c.FormFile("image")
-	if(err != nil){
-		return err
-	}
-	// create a hash of the image file
-	hash := sha256.New()
-	src, err := image.Open()
-	if(err != nil){
-		return err
-	}
-	defer src.Close()
-	if _, err := io.Copy(hash, src); err != nil {
-		return err
-	}
-	imageHash := hex.EncodeToString(hash.Sum(nil))
 	// Save the image file
-	imagePath := filepath.Join(ImgDir, imageHash+".jpg")
-	dst, err := os.Create(imagePath)
-	if err != nil {
-		return err
-	}
-	defer dst.Close()
-	if _, err := src.Seek(0, io.SeekStart); err != nil {
-		return err
-	}
-	if _, err := io.Copy(dst, src); err != nil {
-		return err
-	}
+    imageName, err := hashAndSaveImage(image, ImgDir)
+    if err != nil {
+        return err
+    }
 
 	// Check if name or category is empty
 	if name == "" || category == "" {
@@ -110,7 +120,7 @@ func addItem(c echo.Context) error {
 			Response{Message: "Name or category cannot be empty"})
 	}
 	// Create new item to add to JSON file
-	new_item := Item{Name: name, Category: category, ImageName: imageHash + ".jpg"}
+	new_item := Item{Name: name, Category: category, ImageName: imageName}
 	// for debug: Received item
 	fmt.Printf("Received item: %+v\n", new_item)
 	// Read existing items from JSON file
