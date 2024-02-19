@@ -106,24 +106,25 @@ func hashAndSaveImage(image *multipart.FileHeader, imgDir string) (string, error
 
 func addItem(c echo.Context) error {
 	// Get form data
+	id := c.FormValue("id")
 	name := c.FormValue("name")
 	category := c.FormValue("category")
 	image, err := c.FormFile("image")
 	// Save the image file
-    imageName, err := hashAndSaveImage(image, ImgDir)
-    if err != nil {
-        return err
-    }
+	imageName, err := hashAndSaveImage(image, ImgDir)
+	if err != nil {
+		return err
+	}
 
-	// Check if name or category is empty
-	if name == "" || category == "" {
-		return c.JSON(http.StatusBadRequest, 
-			Response{Message: "Name or category cannot be empty"})
+	// Check if id or name or category or image is empty
+	if id == "" || name == "" || category == "" {
+		return c.JSON(http.StatusBadRequest,
+			Response{Message: "Id or name or category cannot be empty"})
 	}
 	// Create new item to add to JSON file
-	new_item := Item{Name: name, Category: category, ImageName: imageName}
+	new_item := Item{ID: id, Name: name, Category: category, ImageName: imageName}
 	// for debug: Received item
-	fmt.Printf("Received item: %+v\n", new_item)
+	c.Logger().Debugf("Received item: %+v\n", new_item)
 	// Read existing items from JSON file
 	items, err := readItemsFromFile()
 	if err != nil {
