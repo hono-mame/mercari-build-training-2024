@@ -25,6 +25,7 @@ const (
 )
 
 type Item struct {
+	ID string `json:"id"`
 	Name string `json:"name"`
 	Category string `json:"category"`
 	ImageName string `json:"image_name"`
@@ -161,6 +162,30 @@ func getImg(c echo.Context) error {
 	return c.File(imgPath)
 }
 
+func getItemFromId(c echo.Context) error {
+	// get item ID from URL parameter
+    itemID := c.Param("itemID")
+	// read items from JSON file
+    items, err := readItemsFromFile()
+    if err != nil {
+        return err
+    }
+    // Find the item with the given ID
+    var foundItem *Item
+    for _, item := range items.Items {
+        if item.ID == itemID {
+            foundItem = &item
+            break
+        }
+    }
+    // if item is not found, return 404 Not Found
+    if foundItem == nil {
+        return c.JSON(http.StatusNotFound, Response{Message: "Item not found"})
+    }
+    // otherwise, return the item's details
+    return c.JSON(http.StatusOK, foundItem)
+}
+
 func main() {
 	e := echo.New()
 
@@ -181,6 +206,7 @@ func main() {
 	e.POST("/items", addItem)
 	e.GET("/items", getItems)
 	e.GET("/image/:imageFilename", getImg)
+	e.GET("/items/:itemID",getItemFromId)
 
 	e.Logger.Fatal(e.Start(":9000"))
 }
