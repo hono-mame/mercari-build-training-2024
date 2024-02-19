@@ -1,7 +1,11 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"path/filepath"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"fmt"
 	"net/http"
@@ -22,6 +26,7 @@ const (
 type Item struct {
 	Name string `json:"name"`
 	Category string `json:"category"`
+	ImageName string `json:"image_name"`
 }
 
 type Items struct {
@@ -70,13 +75,42 @@ func addItem(c echo.Context) error {
 	// Get form data
 	name := c.FormValue("name")
 	category := c.FormValue("category")
+	image, err := c.FormFile("image")
+	if(err != nil){
+		return err
+	}
+	// create a hash of the image file
+	hash := sha256.New()
+	src, err := image.Open()
+	if(err != nil){
+		return err
+	}
+	defer src.Close()
+	if _, err := io.Copy(hash, src); err != nil {
+		return err
+	}
+	imageHash := hex.EncodeToString(hash.Sum(nil))
+	// Save the image file
+	imagePath := filepath.Join(ImgDir, imageHash+".jpg")
+	dst, err := os.Create(imagePath)
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
+	if _, err := src.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+	if _, err := io.Copy(dst, src); err != nil {
+		return err
+	}
+
 	// Check if name or category is empty
 	if name == "" || category == "" {
 		return c.JSON(http.StatusBadRequest, 
 			Response{Message: "Name or category cannot be empty"})
 	}
 	// Create new item to add to JSON file
-	new_item := Item{Name: name, Category: category}
+	new_item := Item{Name: name, Category: category, ImageName: imageHash + ".jpg"}
 	// for debug: Received item
 	fmt.Printf("Received item: %+v\n", new_item)
 	// Read existing items from JSON file
