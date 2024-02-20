@@ -5,3 +5,7 @@ CREATE TABLE IF NOT EXISTS "items" (
 	"image_name"	TEXT,
 	PRIMARY KEY("id")
 );
+CREATE TABLE "categories" (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);

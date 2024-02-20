@@ -42,6 +42,16 @@ type Response struct {
 	Message string `json:"message"`
 }
 
+type ItemWithCategory struct {
+    Name        string `json:"name"`
+    Category    string `json:"category"`
+    ImageName   string `json:"image_name"`
+}
+
+type ItemsResponse struct {
+    Items []ItemWithCategory `json:"items"`
+}
+
 func root(c echo.Context) error {
 	res := Response{Message: "Hello, world!"}
 	return c.JSON(http.StatusOK, res)
@@ -141,23 +151,26 @@ func addItem(db *sql.DB) echo.HandlerFunc {
 }
 
 func getItems(db *sql.DB) echo.HandlerFunc {
-    return func(c echo.Context) error {
-        // select all and put it to rows
-        rows, err := db.Query("SELECT name, category, image_name FROM items")
-        if err != nil {
-            return err
-        }
-        defer rows.Close()
-        var items []Item
+	return func(c echo.Context) error {
+		query := `
+            SELECT items.name, categories.name, items.image_name
+            FROM items
+            JOIN categories ON items.category_id = categories.id
+        `
+		rows, err := db.Query(query)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+        var items []ItemWithCategory
         for rows.Next() {
-            var item Item
-            err := rows.Scan(&item.Name, &item.Category, &item.ImageName)
-            if err != nil {
+            var item ItemWithCategory
+            if err := rows.Scan(&item.Name, &item.Category, &item.ImageName); err != nil {
                 return err
             }
             items = append(items, item)
         }
-        return c.JSON(http.StatusOK, Items{Items: items})
+        return c.JSON(http.StatusOK, ItemsResponse{Items: items})
     }
 }
 
