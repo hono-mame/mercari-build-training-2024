@@ -1,6 +1,8 @@
 package main
 
 import (
+	"database/sql"
+	"strconv"
 	"mime/multipart"
 	"crypto/sha256"
 	"encoding/hex"
@@ -17,15 +19,17 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
 	ImgDir = "images"
 	JSONFile = "items.json"
+	DBPath    = "/Users/honokakobayashi/Desktop/mercari-build-training/mercari-build-training-2024/db/mercari.sqlite3"
 )
 
 type Item struct {
-	ID string `json:"id"`
+	ID int `json:"id"`
 	Name string `json:"name"`
 	Category string `json:"category"`
 	ImageName string `json:"image_name"`
@@ -104,9 +108,9 @@ func hashAndSaveImage(image *multipart.FileHeader, imgDir string) (string, error
 }
 
 
-func addItem(c echo.Context) error {
+func addItem(db *sql.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
 	// Get form data
-	id := c.FormValue("id")
 	name := c.FormValue("name")
 	category := c.FormValue("category")
 	image, err := c.FormFile("image")
@@ -115,38 +119,47 @@ func addItem(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-
 	// Check if id or name or category or image is empty
-	if id == "" || name == "" || category == "" {
+	if name == "" || category == "" {
 		return c.JSON(http.StatusBadRequest,
-			Response{Message: "Id or name or category cannot be empty"})
+			Response{Message: "Name or category cannot be empty"})
 	}
-	// Create new item to add to JSON file
-	new_item := Item{ID: id, Name: name, Category: category, ImageName: imageName}
-	// for debug: Received item
-	c.Logger().Debugf("Received item: %+v\n", new_item)
-	// Read existing items from JSON file
-	items, err := readItemsFromFile()
+	// define query and execute
+	insertQuery := "INSERT INTO items (name, category, image_name) VALUES (?, ?, ?)"
+	result, err := db.Exec(insertQuery, name, category, imageName)
 	if err != nil {
 		return err
 	}
-	// Append new item to items
-	items.Items = append(items.Items, new_item)
-	// Write items back to JSON file
-	if err := writeItemsToFile(items); err != nil {
+	// get ID which is created automatically
+	itemID, err := result.LastInsertId()
+	if err != nil {
 		return err
 	}
-	message := fmt.Sprintf("Item received: %s", new_item.Name)
+	message := fmt.Sprintf("Item added with ID: %d", itemID)
 	res := Response{Message: message}
 	return c.JSON(http.StatusOK, res)
+	}
 }
 
-func getItems(c echo.Context) error {
-	items, err := readItemsFromFile()
-	if err != nil {
-		return err
-	}
-	return c.JSON(http.StatusOK, items)
+func getItems(db *sql.DB) echo.HandlerFunc {
+    return func(c echo.Context) error {
+        // select all and put it to rows
+        rows, err := db.Query("SELECT id, name, category, image_name FROM items")
+        if err != nil {
+            return err
+        }
+        defer rows.Close()
+        var items []Item
+        for rows.Next() {
+            var item Item
+            err := rows.Scan(&item.ID, &item.Name, &item.Category, &item.ImageName)
+            if err != nil {
+                return err
+            }
+            items = append(items, item)
+        }
+        return c.JSON(http.StatusOK, Items{Items: items})
+    }
 }
 
 func getImg(c echo.Context) error {
@@ -163,28 +176,30 @@ func getImg(c echo.Context) error {
 	return c.File(imgPath)
 }
 
-func getItemFromId(c echo.Context) error {
-	// get item ID from URL parameter
-    itemID := c.Param("itemID")
-	// read items from JSON file
-    items, err := readItemsFromFile()
-    if err != nil {
-        return err
-    }
-    // Find the item with the given ID
-    var foundItem *Item
-    for _, item := range items.Items {
-        if item.ID == itemID {
-            foundItem = &item
-            break
+func getItemFromId(db *sql.DB) echo.HandlerFunc {
+    return func(c echo.Context) error {
+        // Get item ID from URL parameter
+        itemIDStr := c.Param("itemID")
+
+        // Convert itemIDStr to integer
+        itemID, err := strconv.Atoi(itemIDStr)
+        if err != nil {
+            return c.JSON(http.StatusBadRequest, Response{Message: "Invalid item ID"})
         }
+
+        // Query database to get item with given ID
+        var item Item
+        err = db.QueryRow("SELECT id, name, category, image_name FROM items WHERE id = ?", itemID).
+    		Scan(&item.ID, &item.Name, &item.Category, &item.ImageName)
+
+        if err == sql.ErrNoRows {
+            return c.JSON(http.StatusNotFound, Response{Message: "Item not found"})
+        } else if err != nil {
+            return err // Return other errors
+        }
+        // Return item details
+        return c.JSON(http.StatusOK, item)
     }
-    // if item is not found, return 404 Not Found
-    if foundItem == nil {
-        return c.JSON(http.StatusNotFound, Response{Message: "Item not found"})
-    }
-    // otherwise, return the item's details
-    return c.JSON(http.StatusOK, foundItem)
 }
 
 func main() {
@@ -203,11 +218,18 @@ func main() {
 		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
 	}))
 
+	// open the database
+	db, err := sql.Open("sqlite3", DBPath)
+	if err != nil {
+		e.Logger.Infof("Failed to open the database: %v", err)
+	}
+	defer db.Close()
+
 	e.GET("/", root)
-	e.POST("/items", addItem)
-	e.GET("/items", getItems)
+	e.POST("/items", addItem(db))
+	e.GET("/items", getItems(db))
 	e.GET("/image/:imageFilename", getImg)
-	e.GET("/items/:itemID",getItemFromId)
+	e.GET("/items/:itemID",getItemFromId(db))
 
 	e.Logger.Fatal(e.Start(":9000"))
 }
