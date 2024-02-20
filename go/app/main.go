@@ -29,7 +29,6 @@ const (
 )
 
 type Item struct {
-	ID int `json:"id"`
 	Name string `json:"name"`
 	Category string `json:"category"`
 	ImageName string `json:"image_name"`
@@ -144,7 +143,7 @@ func addItem(db *sql.DB) echo.HandlerFunc {
 func getItems(db *sql.DB) echo.HandlerFunc {
     return func(c echo.Context) error {
         // select all and put it to rows
-        rows, err := db.Query("SELECT id, name, category, image_name FROM items")
+        rows, err := db.Query("SELECT name, category, image_name FROM items")
         if err != nil {
             return err
         }
@@ -152,7 +151,7 @@ func getItems(db *sql.DB) echo.HandlerFunc {
         var items []Item
         for rows.Next() {
             var item Item
-            err := rows.Scan(&item.ID, &item.Name, &item.Category, &item.ImageName)
+            err := rows.Scan(&item.Name, &item.Category, &item.ImageName)
             if err != nil {
                 return err
             }
@@ -189,8 +188,8 @@ func getItemFromId(db *sql.DB) echo.HandlerFunc {
 
         // Query database to get item with given ID
         var item Item
-        err = db.QueryRow("SELECT id, name, category, image_name FROM items WHERE id = ?", itemID).
-    		Scan(&item.ID, &item.Name, &item.Category, &item.ImageName)
+        err = db.QueryRow("SELECT name, category, image_name FROM items WHERE id = ?", itemID).
+    		Scan(&item.Name, &item.Category, &item.ImageName)
 
         if err == sql.ErrNoRows {
             return c.JSON(http.StatusNotFound, Response{Message: "Item not found"})
@@ -200,6 +199,29 @@ func getItemFromId(db *sql.DB) echo.HandlerFunc {
         // Return item details
         return c.JSON(http.StatusOK, item)
     }
+}
+
+func searchItemsById(db *sql.DB) echo.HandlerFunc {
+    return func(c echo.Context) error {
+		// get keyword from parameter
+        keyword := c.QueryParam("keyword")
+		// check the rows whose name have keyword
+		rows, err := db.Query("SELECT name, category, image_name FROM items WHERE name LIKE ?", "%"+keyword+"%")
+        if err != nil {
+            return err
+        }
+        defer rows.Close()
+		// for result
+        var items []Item
+        for rows.Next() {
+            var item Item
+            if err := rows.Scan(&item.Name, &item.Category, &item.ImageName); err != nil {
+                return err
+            }
+            items = append(items, item)
+        }
+        return c.JSON(http.StatusOK, map[string]interface{}{"items": items})
+	}
 }
 
 func main() {
@@ -230,6 +252,6 @@ func main() {
 	e.GET("/items", getItems(db))
 	e.GET("/image/:imageFilename", getImg)
 	e.GET("/items/:itemID",getItemFromId(db))
-
+	e.GET("/search", searchItemsById(db))
 	e.Logger.Fatal(e.Start(":9000"))
 }
