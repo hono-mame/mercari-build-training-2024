@@ -3,6 +3,12 @@ FROM alpine
 RUN addgroup -S mercari && adduser -S trainee -G mercari
 # RUN chown -R trainee:mercari /path/to/db
 
+# install go
+RUN apk add --no-cache go
+# install tesseract
+RUN apk add --no-cache tesseract-ocr tesseract-ocr-data-jpn
+RUN apk add --no-cache tesseract-ocr tesseract-ocr-data-eng
+
 USER trainee
 
 CMD ["go", "version"]
