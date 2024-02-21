@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS "items" (
 	"id"	INTEGER,
 	"name"	TEXT NOT NULL,
-	"category"	TEXT,
+	"category_id"	INTEGER,
 	"image_name"	TEXT,
 	PRIMARY KEY("id")
 );

@@ -30,7 +30,7 @@ const (
 
 type Item struct {
 	Name string `json:"name"`
-	Category string `json:"category"`
+	Category_id int `json:"category"`
 	ImageName string `json:"image_name"`
 }
 
@@ -116,32 +116,53 @@ func hashAndSaveImage(image *multipart.FileHeader, imgDir string) (string, error
     return imageName, nil
 }
 
+func getCategoryID(db *sql.DB, categoryName string) (int, error) {
+	var categoryID int
+	err := db.QueryRow("SELECT id FROM categories WHERE name = ?", categoryName).Scan(&categoryID)
+	if err != nil {
+		return 0, err
+	}
+	return categoryID, nil
+}
 
 func addItem(db *sql.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 	// Get form data
 	name := c.FormValue("name")
-	category := c.FormValue("category")
+	categoryName := c.FormValue("category")
 	image, err := c.FormFile("image")
+	if err != nil {
+		c.Logger().Debugf("Failed to load image")
+		return err
+	}
+	// Get category ID from category name
+	categoryID, err := getCategoryID(db, categoryName)
+	if err != nil {
+		c.Logger().Debugf("Category name does not exist")
+		return err
+	}
 	// Save the image file
 	imageName, err := hashAndSaveImage(image, ImgDir)
 	if err != nil {
+		c.Logger().Debugf("Image processing failed")
 		return err
 	}
 	// Check if id or name or category or image is empty
-	if name == "" || category == "" {
+	if name == "" || categoryName == "" {
 		return c.JSON(http.StatusBadRequest,
 			Response{Message: "Name or category cannot be empty"})
 	}
 	// define query and execute
-	insertQuery := "INSERT INTO items (name, category, image_name) VALUES (?, ?, ?)"
-	result, err := db.Exec(insertQuery, name, category, imageName)
+	insertQuery := "INSERT INTO items (name, category_id, image_name) VALUES (?, ?, ?)"
+	result, err := db.Exec(insertQuery, name, categoryID, imageName)
 	if err != nil {
+		c.Logger().Debugf("Failed to inser the data to database")
 		return err
 	}
 	// get ID which is created automatically
 	itemID, err := result.LastInsertId()
 	if err != nil {
+		c.Logger().Debugf("Failed to get ID")
 		return err
 	}
 	message := fmt.Sprintf("Item added with ID: %d", itemID)
@@ -198,10 +219,15 @@ func getItemFromId(db *sql.DB) echo.HandlerFunc {
         if err != nil {
             return c.JSON(http.StatusBadRequest, Response{Message: "Invalid item ID"})
         }
-
         // Query database to get item with given ID
-        var item Item
-        err = db.QueryRow("SELECT name, category, image_name FROM items WHERE id = ?", itemID).
+        var item ItemWithCategory
+		query := `
+            SELECT items.name, categories.name, items.image_name
+            FROM items
+            JOIN categories ON items.category_id = categories.id
+			WHERE items.id = ?
+        `
+        err = db.QueryRow(query, itemID).
     		Scan(&item.Name, &item.Category, &item.ImageName)
 
         if err == sql.ErrNoRows {
@@ -214,27 +240,33 @@ func getItemFromId(db *sql.DB) echo.HandlerFunc {
     }
 }
 
-func searchItemsById(db *sql.DB) echo.HandlerFunc {
+func searchItemsByKeyword(db *sql.DB) echo.HandlerFunc {
     return func(c echo.Context) error {
 		// get keyword from parameter
         keyword := c.QueryParam("keyword")
-		// check the rows whose name have keyword
-		rows, err := db.Query("SELECT name, category, image_name FROM items WHERE name LIKE ?", "%"+keyword+"%")
+		// Construct the query to search for items containing the keyword in their name
+        query := `
+            SELECT items.name, categories.name, items.image_name
+            FROM items
+            JOIN categories ON items.category_id = categories.id
+            WHERE items.name LIKE ?
+        `
+		rows, err := db.Query(query, "%"+keyword+"%")
         if err != nil {
             return err
         }
         defer rows.Close()
 		// for result
-        var items []Item
+        var items []ItemWithCategory
         for rows.Next() {
-            var item Item
+            var item ItemWithCategory
             if err := rows.Scan(&item.Name, &item.Category, &item.ImageName); err != nil {
                 return err
             }
             items = append(items, item)
         }
-        return c.JSON(http.StatusOK, map[string]interface{}{"items": items})
-	}
+        return c.JSON(http.StatusOK, ItemsResponse{Items: items})
+    }
 }
 
 func main() {
@@ -265,6 +297,6 @@ func main() {
 	e.GET("/items", getItems(db))
 	e.GET("/image/:imageFilename", getImg)
 	e.GET("/items/:itemID",getItemFromId(db))
-	e.GET("/search", searchItemsById(db))
+	e.GET("/search", searchItemsByKeyword(db))
 	e.Logger.Fatal(e.Start(":9000"))
 }
