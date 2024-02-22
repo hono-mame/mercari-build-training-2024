@@ -25,7 +25,7 @@ import (
 const (
 	ImgDir = "images"
 	JSONFile = "items.json"
-	DBPath    = "/Users/honokakobayashi/Desktop/mercari-build-training/mercari-build-training-2024/db/mercari.sqlite3"
+	DBPath    = "../mercari.sqlite3"
 )
 
 type Item struct {
