@@ -25,7 +25,8 @@ import (
 const (
 	ImgDir = "images"
 	JSONFile = "items.json"
-	DBPath    = "/Users/honokakobayashi/Desktop/mercari-build-training/mercari-build-training-2024/db/mercari.sqlite3"
+	DBPath    = "../mercari.sqlite3"
+	// DBPath    = "/Users/honokakobayashi/Desktop/mercari-build-training/mercari-build-training-2024/db/mercari.sqlite3"
 )
 
 type Item struct {
@@ -120,6 +121,9 @@ func getCategoryID(db *sql.DB, categoryName string) (int, error) {
 	var categoryID int
 	err := db.QueryRow("SELECT id FROM categories WHERE name = ?", categoryName).Scan(&categoryID)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, echo.NewHTTPError(http.StatusNotFound, fmt.Sprintf("Category '%s' not found", categoryName))
+		}
 		return 0, err
 	}
 	return categoryID, nil
