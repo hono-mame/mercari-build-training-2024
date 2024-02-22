@@ -26,7 +26,7 @@ const (
 	ImgDir = "images"
 	JSONFile = "items.json"
 	DBPath    = "../../db/mercari.sqlite3"
-	DBschemaPath = "../../db/items.db"
+	DBSchemaPath = "../../db/items.db"
 )
 
 type Item struct {
