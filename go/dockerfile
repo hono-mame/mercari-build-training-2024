@@ -8,11 +8,11 @@ RUN addgroup -S mercari && adduser -S trainee -G mercari
 
 WORKDIR /app
 
-COPY . /app/
-COPY db/mercari.sqlite3 /app/
-RUN mv /app/mercari.sqlite3 /db/ && \
-    mv /app/db / && \
-    chown -R trainee:mercari /db
+# copy only what is needed
+COPY db/ ./db/
+COPY go/ ./go/
+
+RUN mv db /db && chown -R trainee:mercari /db
 
 WORKDIR /app/go
 
