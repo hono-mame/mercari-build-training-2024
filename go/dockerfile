@@ -11,7 +11,6 @@ WORKDIR /app
 # copy only what is needed
 COPY db/ ./db/
 COPY go/ ./go/
-COPY db/mercari.sqlite3 /app
 
 RUN mv db /db && chown -R trainee:mercari /db
 

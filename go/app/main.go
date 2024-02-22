@@ -25,8 +25,8 @@ import (
 const (
 	ImgDir = "images"
 	JSONFile = "items.json"
-	DBPath    = "../mercari.sqlite3"
-	// DBPath    = "/Users/honokakobayashi/Desktop/mercari-build-training/mercari-build-training-2024/db/mercari.sqlite3"
+	DBPath    = "../db/mercari.sqlite3"
+	DBschemaPath = "../db/items.db"
 )
 
 type Item struct {
@@ -273,6 +273,23 @@ func searchItemsByKeyword(db *sql.DB) echo.HandlerFunc {
     }
 }
 
+func setupDatabase(DBPath string) (*sql.DB, error) {
+	// Open the database
+	db, err := sql.Open("sqlite3", DBPath)
+	if err != nil {
+		return nil, err
+	}
+	// Create table if not exists
+	result, err := os.ReadFile(DbSchemaPath)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := db.Exec(string(result)); err != nil {
+		return nil, fmt.Errorf("failed to create table: %v", err)
+	}
+	return db, nil
+}
+
 func main() {
 	e := echo.New()
 
@@ -289,10 +306,11 @@ func main() {
 		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
 	}))
 
-	// open the database
-	db, err := sql.Open("sqlite3", DBPath)
+	// Setup the database
+	db, err := setupDatabase(DBPath)
 	if err != nil {
-		e.Logger.Infof("Failed to open the database: %v", err)
+		fmt.Printf("Failed to setup the database: %v\n", err)
+		return
 	}
 	defer db.Close()
 
