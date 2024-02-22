@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS "items" (
+	"id"	INTEGER,
+	"name"	TEXT NOT NULL,
+	"category_id"	INTEGER,
+	"image_name"	TEXT,
+	PRIMARY KEY("id")
+);
+CREATE TABLE "categories" (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
