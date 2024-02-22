@@ -25,8 +25,8 @@ import (
 const (
 	ImgDir = "images"
 	JSONFile = "items.json"
-	DBPath    = "../db/mercari.sqlite3"
-	DBschemaPath = "../db/items.db"
+	DBPath    = "../../db/mercari.sqlite3"
+	DBschemaPath = "../../db/items.db"
 )
 
 type Item struct {
@@ -280,7 +280,7 @@ func setupDatabase(DBPath string) (*sql.DB, error) {
 		return nil, err
 	}
 	// Create table if not exists
-	result, err := os.ReadFile(DbSchemaPath)
+	result, err := os.ReadFile(DBSchemaPath)
 	if err != nil {
 		return nil, err
 	}
