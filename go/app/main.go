@@ -122,7 +122,17 @@ func getCategoryID(db *sql.DB, categoryName string) (int, error) {
 	err := db.QueryRow("SELECT id FROM categories WHERE name = ?", categoryName).Scan(&categoryID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return 0, echo.NewHTTPError(http.StatusNotFound, fmt.Sprintf("Category '%s' not found", categoryName))
+			result, err := db.Exec("INSERT INTO categories (name) VALUES (?)", categoryName)
+			if err != nil {
+				return 0, err
+			}
+			categoryID, err := result.LastInsertId()
+			if err != nil {
+				return 0, err
+			}
+			message := fmt.Sprintf("New category '%s' added with ID: %d", categoryName, categoryID)
+			log.Printf(message)
+			return int(categoryID), nil
 		}
 		return 0, err
 	}
@@ -139,10 +149,19 @@ func addItem(db *sql.DB) echo.HandlerFunc {
 		c.Logger().Debugf("Failed to load image")
 		return err
 	}
+	// Check if id or name or category or image is empty
+	if name == "" || categoryName == "" {
+		return c.JSON(http.StatusBadRequest,
+			Response{Message: "Name or category cannot be empty"})
+	}
 	// Get category ID from category name
 	categoryID, err := getCategoryID(db, categoryName)
 	if err != nil {
-		c.Logger().Debugf("Category name does not exist")
+		if httpErr, ok := err.(*echo.HTTPError); ok {
+			// Handle HTTP errors
+			return c.JSON(httpErr.Code, Response{Message: httpErr.Message.(string)})
+		}
+		c.Logger().Debugf("Category error")
 		return err
 	}
 	// Save the image file
@@ -150,11 +169,6 @@ func addItem(db *sql.DB) echo.HandlerFunc {
 	if err != nil {
 		c.Logger().Debugf("Image processing failed")
 		return err
-	}
-	// Check if id or name or category or image is empty
-	if name == "" || categoryName == "" {
-		return c.JSON(http.StatusBadRequest,
-			Response{Message: "Name or category cannot be empty"})
 	}
 	// define query and execute
 	insertQuery := "INSERT INTO items (name, category_id, image_name) VALUES (?, ?, ?)"
