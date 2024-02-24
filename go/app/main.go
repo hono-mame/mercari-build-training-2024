@@ -44,6 +44,7 @@ type Response struct {
 }
 
 type ItemWithCategory struct {
+	Id          int    `json:"id"`
     Name        string `json:"name"`
     Category    string `json:"category"`
     ImageName   string `json:"image_name"`
@@ -192,7 +193,7 @@ func addItem(db *sql.DB) echo.HandlerFunc {
 func getItems(db *sql.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		query := `
-            SELECT items.name, categories.name, items.image_name
+            SELECT items.id, items.name, categories.name, items.image_name
             FROM items
             JOIN categories ON items.category_id = categories.id
         `
@@ -204,7 +205,7 @@ func getItems(db *sql.DB) echo.HandlerFunc {
         var items []ItemWithCategory
         for rows.Next() {
             var item ItemWithCategory
-            if err := rows.Scan(&item.Name, &item.Category, &item.ImageName); err != nil {
+            if err := rows.Scan(&item.Id, &item.Name, &item.Category, &item.ImageName); err != nil {
                 return err
             }
             items = append(items, item)
