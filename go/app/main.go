@@ -228,6 +228,7 @@ func getImg(c echo.Context) error {
 		imgPath = path.Join(ImgDir, "default.jpg")
 	}
 	return c.File(imgPath)
+}
 
 func getItemFromId(db *sql.DB) echo.HandlerFunc {
     return func(c echo.Context) error {
