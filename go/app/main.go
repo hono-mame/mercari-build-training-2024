@@ -334,7 +334,7 @@ func main() {
 	e.GET("/", root)
 	e.POST("/items", addItem(db))
 	e.GET("/items", getItems(db))
-	e.GET("/image/:imageFilename", getImg(db))
+	e.GET("/image/:imageFilename", getImg)
 	e.GET("/items/:itemID",getItemFromId(db))
 	e.GET("/search", searchItemsByKeyword(db))
 	e.Logger.Fatal(e.Start(":9000"))
