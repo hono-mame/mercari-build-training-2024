@@ -47,7 +47,7 @@ type ItemWithCategory struct {
 	Id          int    `json:"id"`
     Name        string `json:"name"`
     Category    string `json:"category"`
-    ImageName   string `json:"image_name"`
+    Image_name   string `json:"image_name"`
 }
 
 type ItemsResponse struct {
@@ -207,7 +207,7 @@ func getItems(db *sql.DB) echo.HandlerFunc {
         var items []ItemWithCategory
         for rows.Next() {
             var item ItemWithCategory
-            if err := rows.Scan(&item.Id, &item.Name, &item.Category, &item.ImageName); err != nil {
+            if err := rows.Scan(&item.Id, &item.Name, &item.Category, &item.Image_name); err != nil {
                 return err
             }
             items = append(items, item)
@@ -273,7 +273,7 @@ func getItemFromId(db *sql.DB) echo.HandlerFunc {
 			WHERE items.id = ?
         `
         err = db.QueryRow(query, itemID).
-    		Scan(&item.Name, &item.Category, &item.ImageName)
+    		Scan(&item.Name, &item.Category, &item.Image_name)
 
         if err == sql.ErrNoRows {
             return c.JSON(http.StatusNotFound, Response{Message: "Item not found"})
@@ -305,7 +305,7 @@ func searchItemsByKeyword(db *sql.DB) echo.HandlerFunc {
         var items []ItemWithCategory
         for rows.Next() {
             var item ItemWithCategory
-            if err := rows.Scan(&item.Name, &item.Category, &item.ImageName); err != nil {
+            if err := rows.Scan(&item.Name, &item.Category, &item.Image_name); err != nil {
                 return err
             }
             items = append(items, item)
