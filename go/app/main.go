@@ -214,18 +214,42 @@ func getItems(db *sql.DB) echo.HandlerFunc {
     }
 }
 
-func getImg(c echo.Context) error {
-	imgPath := path.Join(ImgDir, c.Param("imageFilename"))
-
-	if !strings.HasSuffix(imgPath, ".jpg") {
-		res := Response{Message: "Image path does not end with .jpg"}
-		return c.JSON(http.StatusBadRequest, res)
-	}
-	if _, err := os.Stat(imgPath); err != nil {
-		c.Logger().Debugf("Image not found: %s", imgPath)
-		imgPath = path.Join(ImgDir, "default.jpg")
-	}
-	return c.File(imgPath)
+func getImg(db *sql.DB) echo.HandlerFunc {
+    return func(c echo.Context) error {
+        // Get image ID from URL parameter
+        imageIDStr := c.Param("imageFilename")
+        // Convert image ID to integer
+        imageID, err := strconv.Atoi(imageIDStr)
+        if err != nil {
+            res := Response{Message: "Invalid image ID"}
+            return c.JSON(http.StatusBadRequest, res)
+        }
+        // Query database to get image path with given image ID
+        var imagePath string
+        err = db.QueryRow("SELECT image_name FROM items WHERE id = ?", imageID).Scan(&imagePath)
+        if err != nil {
+            if err == sql.ErrNoRows {
+                res := Response{Message: "Image not found"}
+                return c.JSON(http.StatusNotFound, res)
+            }
+            return err // Return other errors
+        }
+        // Construct the full image path
+        imgPath := path.Join(ImgDir, imagePath)
+        // Check if the image path ends with ".jpg"
+        if !strings.HasSuffix(imgPath, ".jpg") {
+            res := Response{Message: "Image path does not end with .jpg"}
+            return c.JSON(http.StatusBadRequest, res)
+        }
+        // Check if the image file exists
+        _, err = os.Stat(imgPath)
+        if err != nil {
+            c.Logger().Debugf("Image not found: %s", imgPath)
+            imgPath = path.Join(ImgDir, "default.jpg")
+        }
+        // Serve the image file
+        return c.File(imgPath)
+    }
 }
 
 func getItemFromId(db *sql.DB) echo.HandlerFunc {
@@ -332,7 +356,7 @@ func main() {
 	e.GET("/", root)
 	e.POST("/items", addItem(db))
 	e.GET("/items", getItems(db))
-	e.GET("/image/:imageFilename", getImg)
+	e.GET("/image/:imageFilename", getImg(db))
 	e.GET("/items/:itemID",getItemFromId(db))
 	e.GET("/search", searchItemsByKeyword(db))
 	e.Logger.Fatal(e.Start(":9000"))
