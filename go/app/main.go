@@ -171,6 +171,8 @@ func addItem(db *sql.DB) echo.HandlerFunc {
 		c.Logger().Debugf("Image processing failed")
 		return err
 	}
+	// Remove "images/" prefix from imageName
+	imageName = strings.TrimPrefix(imageName, "images/")
 	// define query and execute
 	insertQuery := "INSERT INTO items (name, category_id, image_name) VALUES (?, ?, ?)"
 	result, err := db.Exec(insertQuery, name, categoryID, imageName)
