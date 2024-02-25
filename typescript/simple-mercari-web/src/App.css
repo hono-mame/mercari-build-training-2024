@@ -3,38 +3,47 @@
 }
 
 .Title {
-  background-color: #222427;
+  background-color: #ffd5d5;
   min-height: 8vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: left;
-  font-size: calc(10px + 1vmin);
-  color: white;
+  font-size: calc(50px + 1vmin);
+  color: black;
+  font-family: 'Arial', sans-serif; /* 可愛らしいフォントを適用 */
+  text-shadow: 2px 2px 4px #888; /* テキストに影を追加して立体感を与える */
 }
 
+
 .Listing {
-  background-color: #222427;
+  background-color: #ffffff;
   min-height: 8vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: left;
   font-size: calc(10px + 1vmin);
-  color: white;
+  color: black;
 }
 
 .ItemList {
-  background-color: #222427;
-  min-height: 8vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: left;
-  font-size: calc(10px + 1vmin);
-  color: white;
+  background-color: rgb(255, 255, 255);
+  padding: 30px;
+  border-radius: 40px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
+.Container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.Item__image {
+  width: 220px; /* 幅を200pxに指定 */
+  height: 270px; /* 高さを200pxに指定 */
+}
 .App-link {
   color: #61dafb;
 }
