@@ -11,8 +11,8 @@
   justify-content: left;
   font-size: calc(50px + 1vmin);
   color: black;
-  font-family: 'Arial', sans-serif; /* 可愛らしいフォントを適用 */
-  text-shadow: 2px 2px 4px #888; /* テキストに影を追加して立体感を与える */
+  font-family: 'Arial', sans-serif; 
+  text-shadow: 2px 2px 4px #888;
 }
 
 
@@ -41,8 +41,8 @@
 }
 
 .Item__image {
-  width: 220px; /* 幅を200pxに指定 */
-  height: 270px; /* 高さを200pxに指定 */
+  width: 220px; 
+  height: 270px; 
 }
 .App-link {
   color: #61dafb;
