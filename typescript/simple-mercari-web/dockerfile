@@ -4,4 +4,10 @@ WORKDIR /app
 RUN addgroup -S mercari && adduser -S trainee -G mercari
 USER trainee
 
-CMD ["node", "-v"]
+COPY --chown=trainee:mercari . .
+
+RUN npm install
+
+EXPOSE 3000
+
+CMD ["npm", "start"]
