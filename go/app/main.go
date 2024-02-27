@@ -296,16 +296,25 @@ func setupDatabase(DBPath string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Create table if not exists
-	result, err := os.ReadFile(DBSchemaPath)
+	// Check if the "categories" table exists
+	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='categories'")
 	if err != nil {
 		return nil, err
 	}
-	if _, err := db.Exec(string(result)); err != nil {
-		return nil, fmt.Errorf("failed to create table: %v", err)
+	defer rows.Close()
+	// If the table doesn't exist, create it
+	if !rows.Next() {
+		result, err := os.ReadFile(DBSchemaPath)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := db.Exec(string(result)); err != nil {
+			return nil, fmt.Errorf("failed to create table: %v", err)
+		}
 	}
 	return db, nil
 }
+
 
 func main() {
 	e := echo.New()
